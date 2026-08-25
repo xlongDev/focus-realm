@@ -3,6 +3,26 @@
 import { useRef, useCallback, useEffect, useState } from "react";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 
+// MediaPipe's WASM runtime emits routine, non-error informational messages via
+// console.error (e.g. "INFO: Created TensorFlow Lite XNNPACK delegate for CPU.").
+// These are benign but get surfaced by error reporters / console-error capture
+// with the current effect stack. Install a single guard that drops only those
+// known-noise lines so real errors still pass through.
+const MEDIAPIPE_NOISE = /(tensorflow lite|xnnpack|info: created)/i;
+let noiseGuardInstalled = false;
+function installMediapipeNoiseGuard() {
+  if (noiseGuardInstalled || typeof console === "undefined") return;
+  noiseGuardInstalled = true;
+  const orig = console.error.bind(console);
+  console.error = (...args: unknown[]) => {
+    const first = args[0];
+    const msg =
+      typeof first === "string" ? first : first != null ? String(first) : "";
+    if (MEDIAPIPE_NOISE.test(msg)) return;
+    orig(...args);
+  };
+}
+
 export interface FaceDetectionResult {
   detected: boolean;
   boundingBox: { x: number; y: number; width: number; height: number } | null;
@@ -17,6 +37,7 @@ export function useFaceDetection() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    installMediapipeNoiseGuard();
     let cancelled = false;
     async function init() {
       try {
@@ -38,6 +59,12 @@ export function useFaceDetection() {
         if (!cancelled) {
           detectorRef.current = landmarker;
           setReady(true);
+        } else {
+          // Effect was cleaned up before creation finished (e.g. Strict Mode
+          // double-invoke in dev) — release the orphaned instance.
+          try {
+            landmarker.close();
+          } catch {}
         }
       } catch {
         // Silently fail - app has fallback heuristic

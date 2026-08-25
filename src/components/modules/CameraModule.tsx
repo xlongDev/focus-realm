@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useT, useSfx } from "@/lib/hooks";
 import { GlassCard } from "@/components/ui/glass";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { ModuleHeader } from "@/components/layout/ModuleHeader";
 import {
   CameraIcon, CameraOffIcon, PersonIcon, FocusIcon, AlertIcon, StatsIcon, TrendUpIcon,
   FaceMeshIcon,
@@ -260,18 +261,23 @@ export function CameraModule() {
   const focusColor = focusScore >= 70 ? "oklch(0.72 0.16 145)" : focusScore >= 40 ? "oklch(0.78 0.16 90)" : "oklch(0.65 0.2 25)";
   const focusLabel = focusScore >= 70 ? t("cam.focused") : focusScore >= 40 ? t("cam.distracted") : t("cam.unfocused");
 
+  const focusedCount = focusHistory.filter((s) => s >= 70).length;
+  const distractedCount = focusHistory.filter((s) => s >= 40 && s < 70).length;
+  const unfocusedCount = focusHistory.filter((s) => s < 40).length;
+  const totalHistory = focusHistory.length;
+
   return (
-    <div className="space-y-6">
-      <ModuleHeaderLocal
+    <div className="space-y-5">
+      <ModuleHeader
         title={t("cam.title")}
         desc={t("cam.desc")}
         icon={<CameraIcon className="w-5 h-5" />}
         accent="linear-gradient(135deg, oklch(0.7 0.16 220), oklch(0.72 0.16 175))"
       />
 
-      <div className="grid lg:grid-cols-[1fr_340px] gap-6">
+      <div className="grid lg:grid-cols-[1fr_300px] gap-5">
         {/* Camera view */}
-        <GlassCard className="p-4 sm:p-6" glow>
+        <GlassCard className="p-4 sm:p-5" glow>
           <div className="relative aspect-video rounded-3xl overflow-hidden bg-black/40">
             {/* Video - mirrored */}
             <video
@@ -470,11 +476,10 @@ export function CameraModule() {
 
         {/* Metrics sidebar */}
         <div className="space-y-4">
-          {/* Focus score big */}
+          {/* Focus score */}
           <GlassCard className="p-5">
-            <h3 className="font-bold mb-3 flex items-center gap-2"><FocusIcon className="w-4 h-4 text-primary" /> {t("cam.focusScore")}</h3>
             <div className="flex items-center gap-4">
-              <div className="relative w-24 h-24">
+              <div className="relative w-20 h-20 shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                   <circle cx="50" cy="50" r="42" fill="none" stroke="var(--foreground)" strokeOpacity="0.1" strokeWidth="8" />
                   <circle
@@ -484,13 +489,19 @@ export function CameraModule() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-bold tabular-nums">{focusScore}</span>
+                  <span className="text-xl font-bold tabular-nums">{focusScore}</span>
                 </div>
               </div>
-              <div className="flex-1">
-                <div className="text-sm font-bold" style={{ color: focusColor }}>{focusLabel}</div>
-                <div className="text-xs text-muted-foreground mt-1">{t("cam.avgFocus")}: <span className="font-bold text-foreground">{avgFocus}</span></div>
-                <div className="text-xs text-muted-foreground">{t("cam.peakFocus")}: <span className="font-bold text-foreground">{peakFocus}</span></div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <FocusIcon className="w-4 h-4 text-primary" />
+                  <span className="font-bold">{t("cam.focusScore")}</span>
+                </div>
+                <div className="text-lg font-bold mt-0.5" style={{ color: focusColor }}>{focusLabel}</div>
+                <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                  <span>{t("cam.avgFocus")}: <b className="text-foreground">{avgFocus}</b></span>
+                  <span>{t("cam.peakFocus")}: <b className="text-foreground">{peakFocus}</b></span>
+                </div>
               </div>
             </div>
           </GlassCard>
@@ -507,24 +518,24 @@ export function CameraModule() {
 
           {/* Metrics grid */}
           <div className="grid grid-cols-2 gap-3">
-            <GlassCard className="p-4">
-              <div className="flex items-center gap-1.5 mb-1 text-primary"><PersonIcon className="w-3.5 h-3.5" /></div>
-              <div className="text-lg font-bold">{personDetected ? t("cam.detected") : t("cam.notDetected")}</div>
+            <GlassCard className="p-3.5">
+              <div className="flex items-center gap-1.5 mb-1.5 text-primary"><PersonIcon className="w-3.5 h-3.5" /></div>
+              <div className="text-base font-bold truncate">{personDetected ? t("cam.detected") : t("cam.notDetected")}</div>
               <div className="text-[11px] text-muted-foreground">{t("cam.faceDetected")}</div>
             </GlassCard>
-            <GlassCard className="p-4">
-              <div className="flex items-center gap-1.5 mb-1 text-primary"><AlertIcon className="w-3.5 h-3.5" /></div>
-              <div className="text-lg font-bold tabular-nums">{Math.round(motionLevel)}%</div>
+            <GlassCard className="p-3.5">
+              <div className="flex items-center gap-1.5 mb-1.5 text-primary"><AlertIcon className="w-3.5 h-3.5" /></div>
+              <div className="text-base font-bold tabular-nums">{Math.round(motionLevel)}%</div>
               <div className="text-[11px] text-muted-foreground">{t("cam.motion")}</div>
             </GlassCard>
-            <GlassCard className="p-4">
-              <div className="flex items-center gap-1.5 mb-1 text-primary"><StatsIcon className="w-3.5 h-3.5" /></div>
-              <div className="text-lg font-bold tabular-nums">{brightness}%</div>
+            <GlassCard className="p-3.5">
+              <div className="flex items-center gap-1.5 mb-1.5 text-primary"><StatsIcon className="w-3.5 h-3.5" /></div>
+              <div className="text-base font-bold tabular-nums">{brightness}%</div>
               <div className="text-[11px] text-muted-foreground">{t("cam.brightness")}</div>
             </GlassCard>
-            <GlassCard className="p-4">
-              <div className="flex items-center gap-1.5 mb-1 text-primary"><CameraIcon className="w-3.5 h-3.5" /></div>
-              <div className="text-lg font-bold tabular-nums">{formatSession(sessionTime)}</div>
+            <GlassCard className="p-3.5">
+              <div className="flex items-center gap-1.5 mb-1.5 text-primary"><CameraIcon className="w-3.5 h-3.5" /></div>
+              <div className="text-base font-bold tabular-nums">{formatSession(sessionTime)}</div>
               <div className="text-[11px] text-muted-foreground">{t("cam.sessionTime")}</div>
             </GlassCard>
           </div>
@@ -533,38 +544,29 @@ export function CameraModule() {
           {focusHistory.length > 5 && (
             <GlassCard className="p-5">
               <h3 className="font-bold mb-3 flex items-center gap-2"><StatsIcon className="w-4 h-4 text-primary" /> {t("cam.focusDistribution")}</h3>
-              {(() => {
-                const focused = focusHistory.filter((s) => s >= 70).length;
-                const distracted = focusHistory.filter((s) => s >= 40 && s < 70).length;
-                const unfocused = focusHistory.filter((s) => s < 40).length;
-                const total = focusHistory.length;
-                const bars = [
-                  { label: t("cam.focusedTime"), count: focused, color: "oklch(0.72 0.16 145)" },
-                  { label: t("cam.distractedTime"), count: distracted, color: "oklch(0.78 0.16 90)" },
-                  { label: t("cam.unfocusedTime"), count: unfocused, color: "oklch(0.65 0.2 25)" },
-                ];
-                return (
-                  <div className="space-y-2">
-                    {bars.map((b) => (
-                      <div key={b.label}>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-muted-foreground">{b.label}</span>
-                          <span className="font-bold tabular-nums">{Math.round((b.count / total) * 100)}%</span>
-                        </div>
-                        <div className="h-2 rounded-full glass overflow-hidden">
-                          <motion.div
-                            className="h-full rounded-full"
-                            style={{ background: b.color }}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${(b.count / total) * 100}%` }}
-                            transition={{ duration: 0.6 }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+              <div className="space-y-2">
+                {[
+                  { label: t("cam.focusedTime"), count: focusedCount, color: "oklch(0.72 0.16 145)" },
+                  { label: t("cam.distractedTime"), count: distractedCount, color: "oklch(0.78 0.16 90)" },
+                  { label: t("cam.unfocusedTime"), count: unfocusedCount, color: "oklch(0.65 0.2 25)" },
+                ].map((b) => (
+                  <div key={b.label}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">{b.label}</span>
+                      <span className="font-bold tabular-nums">{Math.round((b.count / totalHistory) * 100)}%</span>
+                    </div>
+                    <div className="h-2 rounded-full glass overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ background: b.color }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(b.count / totalHistory) * 100}%` }}
+                        transition={{ duration: 0.6 }}
+                      />
+                    </div>
                   </div>
-                );
-              })()}
+                ))}
+              </div>
             </GlassCard>
           )}
         </div>
@@ -639,8 +641,8 @@ function calcEAR(
 }
 
 function FocusChart({ data, color }: { data: number[]; color: string }) {
-  const w = 280;
-  const h = 90;
+  const w = 260;
+  const h = 80;
   const pad = 6;
   const stepX = (w - pad * 2) / Math.max(1, data.length - 1);
   const points = data.map((v, i) => ({ x: pad + i * stepX, y: h - pad - (v / 100) * (h - pad * 2) }));
@@ -648,7 +650,7 @@ function FocusChart({ data, color }: { data: number[]; color: string }) {
   const areaPath = points.length > 1 ? `${path} L ${points[points.length - 1].x} ${h - pad} L ${points[0].x} ${h - pad} Z` : "";
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-24">
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-20">
       <defs>
         <linearGradient id="focusArea" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.35" />
@@ -666,18 +668,4 @@ function formatSession(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-function ModuleHeaderLocal({ title, desc, icon, accent }: { title: string; desc: string; icon: React.ReactNode; accent?: string }) {
-  return (
-    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-4">
-      <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0" style={{ background: accent || "linear-gradient(135deg, var(--primary), var(--glow))" }}>
-        {icon}
-      </div>
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5 max-w-2xl">{desc}</p>
-      </div>
-    </motion.div>
-  );
 }

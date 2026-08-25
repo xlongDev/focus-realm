@@ -7,12 +7,13 @@ import { useT, useSfx, formatTime } from "@/lib/hooks";
 import { GlassCard } from "@/components/ui/glass";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { ModuleHeader } from "@/components/layout/ModuleHeader";
 import { toast } from "sonner";
 import {
   PlayIcon, PauseIcon, ResetIcon, LeafIcon, RainIcon, WaveIcon, WindIcon, FireIcon,
   StreamIcon, NightIcon, BirdIcon, CafeIcon, BowlIcon, ChimeIcon, ThunderIcon,
   WhaleIcon, CrystalIcon, MusicIcon, MeditationIcon, UploadIcon,
-  HarpIcon, FluteIcon, StringsIcon, PadIcon,
+  HarpIcon, FluteIcon, StringsIcon, PadIcon, StatsIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { ambientSounds, musicPlayer, CustomMusicPlayer } from "@/lib/sound";
@@ -282,30 +283,30 @@ export function MeditationModule() {
   const totalMinutes = meditationSessions.reduce((s, m) => s + Math.round(m.durationSec / 60), 0);
 
   return (
-    <div className="space-y-6">
-      <ModuleHeaderLocal
+    <div className="space-y-5">
+      <ModuleHeader
         title={t("med.title")}
         desc={t("med.desc")}
         icon={<MeditationIcon className="w-5 h-5" />}
         accent="linear-gradient(135deg, oklch(0.65 0.2 330), oklch(0.7 0.15 145))"
       />
 
-      <div className="grid lg:grid-cols-[1fr_340px] gap-6">
+      <div className="grid lg:grid-cols-[1fr_300px] gap-5">
         {/* Main meditation area */}
-        <GlassCard className="p-6 sm:p-8 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden" glow>
+        <GlassCard className="p-6 sm:p-8 flex flex-col items-center justify-between min-h-[540px] relative overflow-hidden" glow>
           <FloatingOrbs count={6} active={running} />
 
-          {/* Clock-style knob with breathing halo centered behind it */}
-          <div className="relative z-10 mb-4 flex items-center justify-center">
-            {/* Breathing guide animation - centered behind knob */}
+          {/* Timer centerpiece */}
+          <div className="relative z-10 flex-1 flex flex-col items-center justify-center w-full">
+            {/* Breathing guide halos */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <motion.div
                 className="rounded-full"
-                animate={running && !paused ? { scale: [1, 1.25, 1], opacity: [0.2, 0.4, 0.2] } : { scale: 1, opacity: 0.12 }}
+                animate={running && !paused ? { scale: [1, 1.25, 1], opacity: [0.2, 0.45, 0.2] } : { scale: 1, opacity: 0.12 }}
                 transition={running && !paused ? { duration: 8, repeat: Infinity, ease: "easeInOut" } : {}}
                 style={{
-                  width: 240,
-                  height: 240,
+                  width: 320,
+                  height: 320,
                   background: "radial-gradient(circle, var(--primary), transparent 70%)",
                 }}
               />
@@ -313,38 +314,38 @@ export function MeditationModule() {
                 className="absolute rounded-full border-2"
                 animate={running && !paused ? { scale: [1, 1.3, 1], opacity: [0.3, 0.06, 0.3] } : { scale: 1, opacity: 0.15 }}
                 transition={running && !paused ? { duration: 8, repeat: Infinity, ease: "easeInOut" } : {}}
-                style={{ width: 200, height: 200, borderColor: "var(--primary)" }}
+                style={{ width: 280, height: 280, borderColor: "var(--primary)" }}
               />
             </div>
 
             <div
               ref={knobRef}
               onPointerDown={(e) => { draggingRef.current = true; handlePointerMove(e); }}
-              className="relative w-44 h-44 rounded-full cursor-grab active:cursor-grabbing select-none"
+              className="relative w-60 h-60 rounded-full cursor-grab active:cursor-grabbing select-none"
               style={{ touchAction: "none" }}
             >
               {/* Progress ring */}
-              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 200 200">
-                <circle cx="100" cy="100" r="92" fill="none" stroke="currentColor" strokeWidth="3" className="text-foreground/10" />
+              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 240 240">
+                <circle cx="120" cy="120" r="110" fill="none" stroke="currentColor" strokeWidth="4" className="text-foreground/10" />
                 <motion.circle
-                  cx="100" cy="100" r="92" fill="none" stroke="var(--primary)" strokeWidth="3"
+                  cx="120" cy="120" r="110" fill="none" stroke="var(--primary)" strokeWidth="4"
                   strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 92}
-                  animate={{ strokeDashoffset: 2 * Math.PI * 92 * (1 - progress) }}
+                  strokeDasharray={2 * Math.PI * 110}
+                  animate={{ strokeDashoffset: 2 * Math.PI * 110 * (1 - progress) }}
                   transition={{ duration: 0.3 }}
                 />
               </svg>
-              <div className="absolute inset-3 rounded-full glass-strong glass-sheen flex items-center justify-center">
+              <div className="absolute inset-4 rounded-full glass-strong glass-sheen flex items-center justify-center">
                 <div className="text-center">
-                  <div className="text-4xl font-bold tabular-nums gradient-text">{formatTime(remaining)}</div>
-                  <div className="text-xs text-muted-foreground mt-1 uppercase tracking-widest">{t("med.duration")}</div>
+                  <div className="text-5xl font-bold tabular-nums gradient-text">{formatTime(remaining)}</div>
+                  <div className="text-xs text-muted-foreground mt-1.5 uppercase tracking-widest">{t("med.duration")}</div>
                 </div>
               </div>
               {/* Handle */}
               <div
-                className="absolute top-1 left-1/2 -translate-x-1/2 w-3 h-7 rounded-full bg-primary shadow-lg"
+                className="absolute top-1.5 left-1/2 -translate-x-1/2 w-3.5 h-8 rounded-full bg-primary shadow-lg"
                 style={{
-                  transformOrigin: "50% 87px",
+                  transformOrigin: "50% 111px",
                   transform: `translateX(-50%) rotate(${knobAngle}deg)`,
                 }}
               />
@@ -354,9 +355,9 @@ export function MeditationModule() {
                 return (
                   <div
                     key={d}
-                    className="absolute left-1/2 top-1 text-[9px] font-medium text-muted-foreground"
+                    className="absolute left-1/2 top-1.5 text-[10px] font-medium text-muted-foreground"
                     style={{
-                      transformOrigin: "0 87px",
+                      transformOrigin: "0 111px",
                       transform: `rotate(${a}deg) translateY(0) translateX(-50%)`,
                     }}
                   >
@@ -367,28 +368,80 @@ export function MeditationModule() {
             </div>
           </div>
 
-          {/* Controls */}
-          <div className="flex items-center gap-3 z-10">
-            {!running ? (
-              <Button onClick={handleStart} className="rounded-full px-6 gap-2 shadow-lg">
-                <PlayIcon className="w-4 h-4" /> {t("med.begin")}
-              </Button>
-            ) : paused ? (
-              <Button onClick={handleResume} className="rounded-full px-6 gap-2 shadow-lg">
-                <PlayIcon className="w-4 h-4" /> {t("common.resume")}
-              </Button>
-            ) : (
-              <Button onClick={handlePause} variant="outline" className="rounded-full px-6 gap-2">
-                <PauseIcon className="w-4 h-4" /> {t("common.pause")}
-              </Button>
-            )}
-            {running && (
-              <Button onClick={handleStop} variant="outline" className="rounded-full px-5 gap-1.5">
-                <ResetIcon className="w-4 h-4" /> {t("common.stop")}
-              </Button>
-            )}
+          {/* Bottom: controls + duration + stats */}
+          <div className="relative z-10 w-full max-w-lg space-y-5">
+            {/* Controls */}
+            <div className="flex items-center justify-center gap-3">
+              {!running ? (
+                <Button onClick={handleStart} className="rounded-full px-7 py-5 gap-2 shadow-lg text-base">
+                  <PlayIcon className="w-5 h-5" /> {t("med.begin")}
+                </Button>
+              ) : paused ? (
+                <Button onClick={handleResume} className="rounded-full px-7 py-5 gap-2 shadow-lg text-base">
+                  <PlayIcon className="w-5 h-5" /> {t("common.resume")}
+                </Button>
+              ) : (
+                <Button onClick={handlePause} variant="outline" className="rounded-full px-7 py-5 gap-2 text-base">
+                  <PauseIcon className="w-5 h-5" /> {t("common.pause")}
+                </Button>
+              )}
+              {running && (
+                <Button onClick={handleStop} variant="outline" className="rounded-full px-6 py-5 gap-1.5">
+                  <ResetIcon className="w-5 h-5" /> {t("common.stop")}
+                </Button>
+              )}
+            </div>
+
+            {/* Duration */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("med.quickSet")}</span>
+                <button
+                  onClick={() => { sfx.click(); setUseCustomTime(!useCustomTime); if (!running) setRemaining((useCustomTime ? duration : customDuration) * 60); }}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {useCustomTime ? t("med.quickSet") : t("med.customDuration")}
+                </button>
+              </div>
+              {useCustomTime ? (
+                <div className="px-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">{t("med.customDuration")}</span>
+                    <span className="text-sm font-bold text-primary tabular-nums">{customDuration}{t("common.minutes")}</span>
+                  </div>
+                  <Slider value={[customDuration]} min={1} max={120} step={1} onValueChange={(v) => { setCustomDuration(v[0]); if (!running) setRemaining(v[0] * 60); }} />
+                </div>
+              ) : (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {DURATIONS.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => { sfx.knobTick(); setDuration(d); if (!running) setRemaining(d * 60); const idx = DURATIONS.indexOf(d); setKnobAngle(idx * (360 / DURATIONS.length)); }}
+                      onMouseEnter={() => sfx.hover()}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                        duration === d ? "bg-primary text-primary-foreground shadow-lg scale-105" : "glass glass-sheen text-foreground/70 hover:text-foreground"
+                      )}
+                    >
+                      {d}{t("common.minutes")}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+              <div className="text-center p-3 rounded-2xl glass">
+                <div className="text-2xl font-bold tabular-nums gradient-text">{totalSessions}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">{t("home.statSessions")}</div>
+              </div>
+              <div className="text-center p-3 rounded-2xl glass">
+                <div className="text-2xl font-bold tabular-nums gradient-text">{totalMinutes}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">{t("home.statMinutes")}</div>
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-3 z-10">{t("med.dragKnob")}</p>
         </GlassCard>
 
         {/* Side panel */}
@@ -491,84 +544,28 @@ export function MeditationModule() {
             </div>
           </GlassCard>
 
-          {/* Duration settings */}
-          <GlassCard className="p-5">
-            <h3 className="font-bold mb-3">{t("med.quickSet")}</h3>
-            {/* Custom time toggle */}
-            <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
-              <div>
-                <div className="text-sm font-medium">{t("med.customDuration")}</div>
-                <div className="text-[10px] text-muted-foreground">{t("med.customDurationHint")}</div>
-              </div>
-              <button
-                onClick={() => { sfx.click(); setUseCustomTime(!useCustomTime); if (!running) setRemaining((useCustomTime ? duration : customDuration) * 60); }}
-                className={cn(
-                  "w-11 h-6 rounded-full transition-colors relative",
-                  useCustomTime ? "bg-primary" : "bg-foreground/20"
-                )}
-              >
-                <div className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform", useCustomTime ? "translate-x-5" : "translate-x-0.5")} />
-              </button>
-            </div>
-            {useCustomTime ? (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">{t("med.customDuration")}</span>
-                  <span className="text-sm font-bold text-primary tabular-nums">{customDuration}{t("common.minutes")}</span>
-                </div>
-                <Slider value={[customDuration]} min={1} max={120} step={1} onValueChange={(v) => { setCustomDuration(v[0]); if (!running) setRemaining(v[0] * 60); }} />
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {DURATIONS.map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => { sfx.knobTick(); setDuration(d); if (!running) setRemaining(d * 60); const idx = DURATIONS.indexOf(d); setKnobAngle(idx * (360 / DURATIONS.length)); }}
-                    onMouseEnter={() => sfx.hover()}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-                      duration === d ? "bg-primary text-primary-foreground shadow-lg scale-105" : "glass glass-sheen text-foreground/70 hover:text-foreground"
-                    )}
-                  >
-                    {d}{t("common.minutes")}
-                  </button>
-                ))}
-              </div>
-            )}
-          </GlassCard>
-
-          {/* Stats */}
+          {/* Tips */}
           <GlassCard className="p-5">
             <h3 className="font-bold mb-3 flex items-center gap-2">
-              <MusicIcon className="w-4 h-4 text-primary" /> {t("med.sessionEnd")}
+              <StatsIcon className="w-4 h-4 text-primary" /> {t("med.tips")}
             </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="text-center p-3 rounded-xl glass">
-                <div className="text-2xl font-bold tabular-nums gradient-text">{totalSessions}</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">{t("home.statSessions")}</div>
-              </div>
-              <div className="text-center p-3 rounded-xl glass">
-                <div className="text-2xl font-bold tabular-nums gradient-text">{totalMinutes}</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">{t("home.statMinutes")}</div>
-              </div>
-            </div>
+            <ul className="space-y-2 text-xs text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <span className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" />
+                {t("med.guide1")}
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" />
+                {t("med.guide2")}
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" />
+                {t("med.guide3")}
+              </li>
+            </ul>
           </GlassCard>
         </div>
       </div>
     </div>
-  );
-}
-
-function ModuleHeaderLocal({ title, desc, icon, accent }: { title: string; desc: string; icon: React.ReactNode; accent?: string }) {
-  return (
-    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-4">
-      <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0" style={{ background: accent || "linear-gradient(135deg, var(--primary), var(--glow))" }}>
-        {icon}
-      </div>
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5 max-w-2xl">{desc}</p>
-      </div>
-    </motion.div>
   );
 }

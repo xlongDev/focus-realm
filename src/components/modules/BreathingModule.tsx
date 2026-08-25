@@ -8,9 +8,10 @@ import { GlassCard } from "@/components/ui/glass";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { ModuleHeader } from "@/components/layout/ModuleHeader";
 import { toast } from "sonner";
 import {
-  PlayIcon, PauseIcon, ResetIcon, BreathingIcon, WindIcon, StatsIcon,
+  PlayIcon, PauseIcon, ResetIcon, BreathingIcon, StatsIcon,
   MusicIcon, UploadIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
@@ -329,126 +330,133 @@ export function BreathingModule() {
   const overallProgress = Math.min(1, elapsedSec / totalSec);
 
   return (
-    <div className="space-y-6">
-      <ModuleHeaderLocal
+    <div className="space-y-5">
+      <ModuleHeader
         title={t("breath.title")}
         desc={t("breath.desc")}
         icon={<BreathingIcon className="w-5 h-5" />}
         accent="linear-gradient(135deg, oklch(0.7 0.16 60), oklch(0.65 0.2 330))"
       />
 
-      <div className="grid lg:grid-cols-[1fr_340px] gap-6">
+      <div className="grid lg:grid-cols-[1fr_300px] gap-5">
         {/* Breathing animation area */}
-        <GlassCard className="p-6 sm:p-8 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden" glow>
+        <GlassCard className="p-6 sm:p-8 flex flex-col items-center justify-between min-h-[540px] relative overflow-hidden" glow>
           <FloatingOrbs count={5} active={running} />
           <ConfettiBurst trigger={celebrate} />
-          {/* Ambient rings */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className="absolute rounded-full border"
-                style={{ width: 200 + i * 50, height: 200 + i * 50, borderColor: "var(--primary)", opacity: 0.1 - i * 0.02 }}
-                animate={running ? { scale: [1, 1.1, 1], opacity: [0.08, 0.15, 0.08] } : {}}
-                transition={{ duration: phases.reduce((s, p) => s + p.sec, 0), repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
-              />
-            ))}
-          </div>
 
-          {/* Breathing circle - compact size */}
-          <div className="relative z-10 flex items-center justify-center" style={{ width: 240, height: 240 }}>
-            <motion.div
-              className="rounded-full flex items-center justify-center"
-              animate={{ scale: circleScale }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              style={{
-                width: 160,
-                height: 160,
-                background: "radial-gradient(circle at 30% 30%, var(--primary), color-mix(in oklch, var(--primary) 50%, var(--glow)))",
-                boxShadow: "0 0 60px var(--glow), inset 0 0 30px rgba(255,255,255,0.2)",
-              }}
-            >
-              <div className="text-center text-white">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={running ? currentPhase?.name : "idle"}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {running && currentPhase ? (
-                      <>
-                        <div className="text-2xl font-bold">{PHASE_LABELS[currentPhase.name][locale]}</div>
-                        <div className="text-4xl font-bold tabular-nums mt-1">{Math.ceil(currentPhase.sec - phaseElapsed)}</div>
-                      </>
-                    ) : finished ? (
-                      <div className="text-xl font-bold">{t("breath.complete")}</div>
-                    ) : (
-                      <div className="text-lg font-medium opacity-80">{t("breath.ready")}</div>
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Cycle counter */}
-          <div className="relative z-10 mt-4 flex items-center gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold tabular-nums gradient-text">{cycle}/{targetCycles}</div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">{t("breath.cycles")}</div>
-            </div>
-            <div className="w-px h-8 bg-foreground/10" />
-            <div className="text-center">
-              <div className="text-2xl font-bold tabular-nums">{formatTime(totalSec - elapsedSec)}</div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">{t("breath.remaining")}</div>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="relative z-10 flex items-center gap-3 mt-6">
-            <Button onClick={reset} variant="outline" className="rounded-full w-12 h-12 p-0">
-              <ResetIcon className="w-5 h-5" />
-            </Button>
-            <Button onClick={togglePlay} className="rounded-full w-16 h-16 p-0 text-xl shadow-xl">
-              {running ? <PauseIcon className="w-7 h-7" /> : <PlayIcon className="w-7 h-7" />}
-            </Button>
-            <div className="w-12 h-12" />
-          </div>
-
-          {/* Progress */}
-          <div className="relative z-10 w-full max-w-xs mt-6">
-            <div className="h-1.5 rounded-full bg-foreground/10 overflow-hidden">
-              <motion.div className="h-full rounded-full" style={{ background: "linear-gradient(90deg, var(--primary), var(--glow))" }} animate={{ width: `${overallProgress * 100}%` }} />
-            </div>
-          </div>
-        </GlassCard>
-
-        {/* Control panel */}
-        <div className="space-y-4">
-          {/* Pattern selection */}
-          <GlassCard className="p-5">
-            <h3 className="font-bold mb-3 flex items-center gap-2"><WindIcon className="w-4 h-4 text-primary" /> {t("breath.pattern")}</h3>
-            <div className="space-y-2">
+          {/* Pattern selector */}
+          <div className="relative z-10 w-full max-w-xl">
+            <div className="flex flex-wrap justify-center gap-2">
               {PATTERNS.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => { sfx.click(); setPatternId(p.id); reset(); }}
                   onMouseEnter={() => sfx.hover()}
                   className={cn(
-                    "w-full text-left p-3 rounded-2xl transition-all",
-                    patternId === p.id ? "text-white shadow-lg scale-[1.02]" : "glass glass-sheen hover:scale-[1.01]"
+                    "px-4 py-2 rounded-full text-sm font-medium transition-all",
+                    patternId === p.id
+                      ? "text-white shadow-lg scale-105"
+                      : "glass glass-sheen text-foreground/70 hover:text-foreground hover:scale-[1.02]"
                   )}
                   style={patternId === p.id ? { background: p.color } : undefined}
                 >
-                  <div className="font-bold text-sm">{p.name}</div>
-                  <div className={cn("text-xs mt-0.5", patternId === p.id ? "text-white/80" : "text-muted-foreground")}>{p.desc}</div>
+                  {p.name}
                 </button>
               ))}
             </div>
-          </GlassCard>
+            <p className="text-xs text-muted-foreground text-center mt-2">{pattern.desc}</p>
+          </div>
 
+          {/* Breathing circle */}
+          <div className="relative z-10 flex-1 flex items-center justify-center w-full" style={{ minHeight: 320 }}>
+            {/* Ambient rings */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="absolute rounded-full border"
+                  style={{ width: 260 + i * 60, height: 260 + i * 60, borderColor: "var(--primary)", opacity: 0.1 - i * 0.02 }}
+                  animate={running ? { scale: [1, 1.1, 1], opacity: [0.08, 0.15, 0.08] } : {}}
+                  transition={{ duration: phases.reduce((s, p) => s + p.sec, 0), repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
+                />
+              ))}
+            </div>
+
+            <div className="relative z-10 flex items-center justify-center" style={{ width: 320, height: 320 }}>
+              <motion.div
+                className="rounded-full flex items-center justify-center"
+                animate={{ scale: circleScale }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                style={{
+                  width: 220,
+                  height: 220,
+                  background: "radial-gradient(circle at 30% 30%, var(--primary), color-mix(in oklch, var(--primary) 50%, var(--glow)))",
+                  boxShadow: "0 0 80px var(--glow), inset 0 0 40px rgba(255,255,255,0.2)",
+                }}
+              >
+                <div className="text-center text-white">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={running ? currentPhase?.name : "idle"}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      {running && currentPhase ? (
+                        <>
+                          <div className="text-3xl font-bold">{PHASE_LABELS[currentPhase.name][locale]}</div>
+                          <div className="text-5xl font-bold tabular-nums mt-1">{Math.ceil(currentPhase.sec - phaseElapsed)}</div>
+                        </>
+                      ) : finished ? (
+                        <div className="text-2xl font-bold">{t("breath.complete")}</div>
+                      ) : (
+                        <div className="text-xl font-medium opacity-80">{t("breath.ready")}</div>
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Bottom info & controls */}
+          <div className="relative z-10 w-full max-w-lg space-y-5">
+            {/* Cycle counter */}
+            <div className="flex items-center justify-center gap-8">
+              <div className="text-center">
+                <div className="text-2xl font-bold tabular-nums gradient-text">{cycle}/{targetCycles}</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider">{t("breath.cycles")}</div>
+              </div>
+              <div className="w-px h-8 bg-foreground/10" />
+              <div className="text-center">
+                <div className="text-2xl font-bold tabular-nums">{formatTime(totalSec - elapsedSec)}</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider">{t("breath.remaining")}</div>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center justify-center gap-3">
+              <Button onClick={reset} variant="outline" className="rounded-full w-13 h-13 p-0">
+                <ResetIcon className="w-5 h-5" />
+              </Button>
+              <Button onClick={togglePlay} className="rounded-full w-18 h-18 p-0 text-xl shadow-xl">
+                {running ? <PauseIcon className="w-8 h-8" /> : <PlayIcon className="w-8 h-8" />}
+              </Button>
+              <div className="w-13 h-13" />
+            </div>
+
+            {/* Progress */}
+            <div className="w-full max-w-sm mx-auto">
+              <div className="h-1.5 rounded-full bg-foreground/10 overflow-hidden">
+                <motion.div className="h-full rounded-full" style={{ background: "linear-gradient(90deg, var(--primary), var(--glow))" }} animate={{ width: `${overallProgress * 100}%` }} />
+              </div>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Control panel */}
+        <div className="space-y-4">
           {/* Custom params */}
           <AnimatePresence>
             {patternId === "custom" && (
@@ -575,19 +583,5 @@ function ParamSlider({ label, value, min, max, onChange }: { label: string; valu
       </div>
       <Slider value={[value]} min={min} max={max} step={1} onValueChange={(v) => onChange(v[0])} />
     </div>
-  );
-}
-
-function ModuleHeaderLocal({ title, desc, icon, accent }: { title: string; desc: string; icon: React.ReactNode; accent?: string }) {
-  return (
-    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-4">
-      <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0" style={{ background: accent || "linear-gradient(135deg, var(--primary), var(--glow))" }}>
-        {icon}
-      </div>
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5 max-w-2xl">{desc}</p>
-      </div>
-    </motion.div>
   );
 }
