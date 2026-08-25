@@ -16,7 +16,8 @@ import {
   HarpIcon, FluteIcon, StringsIcon, PadIcon, StatsIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { ambientSounds, musicPlayer, CustomMusicPlayer } from "@/lib/sound";
+import { ambientSounds } from "@/lib/ambient-sounds";
+import { musicPlayer, CustomMusicPlayer } from "@/lib/music";
 import { FloatingOrbs } from "@/components/ui/effects";
 
 interface AmbientDef {

@@ -3,6 +3,8 @@
 import { useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useAppStore, type ModuleId } from "@/lib/store";
+import { useRouter } from "next/navigation";
+import { pathFor } from "@/lib/routes";
 import { useT, useSfx } from "@/lib/hooks";
 import { GlassCard } from "@/components/ui/glass";
 import {
@@ -80,7 +82,7 @@ const FEATURES: FeatureCard[] = [
 export function HomeModule() {
   const t = useT();
   const sfx = useSfx();
-  const setActiveModule = useAppStore((s) => s.setActiveModule);
+  const router = useRouter();
   const pomoSessions = useAppStore((s) => s.pomoSessions);
   const schulteRecords = useAppStore((s) => s.schulteRecords);
   const meditationSessions = useAppStore((s) => s.meditationSessions);
@@ -107,7 +109,7 @@ export function HomeModule() {
 
   const go = (id: ModuleId) => {
     sfx.click();
-    setActiveModule(id);
+    router.push(pathFor(id));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 

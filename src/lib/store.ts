@@ -49,10 +49,6 @@ export interface MeditationSession {
 }
 
 interface AppState {
-  // Navigation
-  activeModule: ModuleId;
-  setActiveModule: (m: ModuleId) => void;
-
   // Theme & i18n
   theme: ThemeName;
   setTheme: (t: ThemeName) => void;
@@ -107,9 +103,6 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      activeModule: "home",
-      setActiveModule: (m) => set({ activeModule: m }),
-
       theme: "system",
       setTheme: (t) => set({ theme: t }),
       locale: "zh",

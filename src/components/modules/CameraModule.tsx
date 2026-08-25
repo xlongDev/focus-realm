@@ -1,262 +1,27 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { useT, useSfx } from "@/lib/hooks";
+import { useT, useSfx, formatTime } from "@/lib/hooks";
 import { GlassCard } from "@/components/ui/glass";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { ModuleHeader } from "@/components/layout/ModuleHeader";
 import {
   CameraIcon, CameraOffIcon, PersonIcon, FocusIcon, AlertIcon, StatsIcon, TrendUpIcon,
   FaceMeshIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { useFaceDetection } from "@/lib/useFaceDetection";
+import { useFaceFocus } from "@/lib/use-face-focus";
+import { getFaceContourPath, getEyeContourPath, getLipsContourPath } from "@/lib/camera-math";
 
 export function CameraModule() {
   const t = useT();
   const sfx = useSfx();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const prevFrameRef = useRef<Uint8ClampedArray | null>(null);
-  const rafRef = useRef<number>(0);
-  const focusHistoryRef = useRef<number[]>([]);
-  const lastFacePosRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
-  const { detect: detectFace, ready: faceReady, loading: faceLoading } = useFaceDetection();
-
-  const [active, setActive] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [focusScore, setFocusScore] = useState(0);
-  const [motionLevel, setMotionLevel] = useState(0);
-  const [brightness, setBrightness] = useState(0);
-  const [personDetected, setPersonDetected] = useState(false);
-  const [faceBox, setFaceBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  const [confidence, setConfidence] = useState(0);
-  const [videoSize, setVideoSize] = useState({ w: 0, h: 0 });
-  const [sessionTime, setSessionTime] = useState(0);
-  const [focusHistory, setFocusHistory] = useState<number[]>([]);
-  const [avgFocus, setAvgFocus] = useState(0);
-  const [peakFocus, setPeakFocus] = useState(0);
-  const [faceLandmarks, setFaceLandmarks] = useState<{ x: number; y: number; z?: number }[]>([]);
-  const [showLandmarks, setShowLandmarks] = useState(true);
-  const [landmarkCount, setLandmarkCount] = useState(0);
-
-  const startCamera = useCallback(async () => {
-    setError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setActive(true);
-      sfx.start();
-      setSessionTime(0);
-      focusHistoryRef.current = [];
-      setFocusHistory([]);
-    } catch (e: any) {
-      setError(e?.message || "Camera access denied");
-      sfx.error();
-    }
-  }, [sfx]);
-
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((tr) => tr.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) videoRef.current.srcObject = null;
-    setActive(false);
-    prevFrameRef.current = null;
-    cancelAnimationFrame(rafRef.current);
-    sfx.click();
-  }, [sfx]);
-
-  // Session timer
-  useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => setSessionTime((s) => s + 1), 1000);
-    return () => clearInterval(id);
-  }, [active]);
-
-  // Motion detection & focus analysis with MediaPipe face detection
-  // Throttled to ~5fps for state updates to prevent UI flickering
-  useEffect(() => {
-    if (!active || !videoRef.current || !canvasRef.current) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return;
-
-    const W = 80;
-    const H = 60;
-    canvas.width = W;
-    canvas.height = H;
-
-    let lastDetectTime = 0;
-    let lastStateUpdate = 0;
-    // Accumulate values between state updates
-    let pendingBrightness = 0;
-    let pendingMotion = 0;
-    let pendingFocusScore = 0;
-    let pendingFaceDetected = false;
-    let pendingFaceBox: { x: number; y: number; width: number; height: number } | null = null;
-    let pendingConfidence = 0;
-    let pendingLandmarks: { x: number; y: number; z?: number }[] = [];
-    let pendingLandmarkCount = 0;
-    let frameCount = 0;
-
-    const analyze = () => {
-      if (video.readyState >= 2) {
-        ctx.drawImage(video, 0, 0, W, H);
-        const frame = ctx.getImageData(0, 0, W, H);
-        const data = frame.data;
-
-        // brightness
-        let brightSum = 0;
-        for (let i = 0; i < data.length; i += 4) {
-          brightSum += (data[i] + data[i + 1] + data[i + 2]) / 3;
-        }
-        const avgBright = brightSum / (data.length / 4);
-        pendingBrightness = Math.round((avgBright / 255) * 100);
-
-        // motion detection (frame difference)
-        let motionSum = 0;
-        if (prevFrameRef.current) {
-          const prev = prevFrameRef.current;
-          for (let i = 0; i < data.length; i += 4) {
-            const dr = Math.abs(data[i] - prev[i]);
-            const dg = Math.abs(data[i + 1] - prev[i + 1]);
-            const db = Math.abs(data[i + 2] - prev[i + 2]);
-            motionSum += (dr + dg + db) / 3;
-          }
-          const avgMotion = motionSum / (data.length / 4);
-          pendingMotion = Math.min(100, avgMotion * 3);
-
-          // MediaPipe face detection (throttled to ~15fps)
-          const now = performance.now();
-          let faceDetected = false;
-          let faceBBox: { x: number; y: number; width: number; height: number } | null = null;
-          let faceConf = 0;
-          let detectedLandmarks: { x: number; y: number; z?: number }[] = [];
-
-          if (faceReady && now - lastDetectTime > 60) {
-            lastDetectTime = now;
-            const result = detectFace(video, now);
-            faceDetected = result.detected;
-            faceBBox = result.boundingBox;
-            faceConf = result.confidence;
-            detectedLandmarks = result.landmarks || [];
-          } else if (!faceReady) {
-            // Fallback: simple heuristic when MediaPipe not ready
-            const centerStart = (H / 3) * W * 4;
-            const centerEnd = (2 * H / 3) * W * 4;
-            let centerVar = 0;
-            let centerMean = 0;
-            let count = 0;
-            for (let i = centerStart; i < centerEnd; i += 4) {
-              centerMean += (data[i] + data[i + 1] + data[i + 2]) / 3;
-              count++;
-            }
-            centerMean /= count;
-            for (let i = centerStart; i < centerEnd; i += 4) {
-              centerVar += Math.pow((data[i] + data[i + 1] + data[i + 2]) / 3 - centerMean, 2);
-            }
-            centerVar = Math.sqrt(centerVar / count);
-            faceDetected = centerVar > 15 && avgBright > 30 && avgBright < 230;
-          }
-
-          pendingFaceDetected = faceDetected;
-          pendingFaceBox = faceBBox;
-          pendingConfidence = Math.round(faceConf * 100);
-          if (detectedLandmarks.length > 0) {
-            pendingLandmarks = detectedLandmarks;
-            pendingLandmarkCount = detectedLandmarks.length;
-          } else {
-            pendingLandmarks = [];
-            pendingLandmarkCount = 0;
-          }
-
-          // ===== Focus Score Algorithm based on MediaPipe Face Mesh =====
-          let score = 0;
-
-          if (faceDetected && detectedLandmarks.length >= 468) {
-            // 1. Eye Aspect Ratio (EAR) - detect eye openness
-            const leftEAR = calcEAR(detectedLandmarks, 33, 160, 158, 133, 153, 144);
-            const rightEAR = calcEAR(detectedLandmarks, 362, 385, 387, 263, 373, 380);
-            const avgEAR = (leftEAR + rightEAR) / 2;
-            const eyeScore = avgEAR > 0.2 ? 100 : avgEAR > 0.1 ? 50 : 0;
-
-            // 2. Head pose stability
-            let headStabilityScore = 100;
-            if (faceBBox && lastFacePosRef.current) {
-              const dx = Math.abs(faceBBox.x - lastFacePosRef.current.x);
-              const dy = Math.abs(faceBBox.y - lastFacePosRef.current.y);
-              const faceMovement = Math.sqrt(dx * dx + dy * dy);
-              headStabilityScore = Math.max(0, 100 - faceMovement * 2);
-            }
-
-            // 3. Body motion score
-            const motionScore = Math.max(0, 100 - avgMotion * 4);
-
-            // 4. Face centeredness
-            let centeredScore = 100;
-            if (faceBBox && videoSize.w > 0) {
-              const faceCenter = faceBBox.x + faceBBox.width / 2;
-              const frameCenter = videoSize.w / 2;
-              const offset = Math.abs(faceCenter - frameCenter) / videoSize.w;
-              centeredScore = Math.max(0, 100 - offset * 200);
-            }
-
-            // Weighted combination
-            score = eyeScore * 0.35 + headStabilityScore * 0.25 + motionScore * 0.25 + centeredScore * 0.15;
-          } else if (!faceDetected) {
-            score = 10;
-          } else {
-            score = Math.max(0, 100 - avgMotion * 4) * 0.5;
-          }
-
-          if (faceBBox) {
-            lastFacePosRef.current = { x: faceBBox.x, y: faceBBox.y, w: faceBBox.width, h: faceBBox.height };
-          }
-          pendingFocusScore = Math.max(0, Math.min(100, Math.round(score)));
-
-          // Throttle state updates to ~5fps (every 200ms) to prevent UI flickering
-          frameCount++;
-          if (now - lastStateUpdate > 200) {
-            lastStateUpdate = now;
-            setBrightness(pendingBrightness);
-            setMotionLevel(pendingMotion);
-            setPersonDetected(pendingFaceDetected);
-            setFaceBox(pendingFaceBox);
-            setConfidence(pendingConfidence);
-            setFaceLandmarks(pendingLandmarks);
-            setLandmarkCount(pendingLandmarkCount);
-            setFocusScore(pendingFocusScore);
-
-            focusHistoryRef.current.push(pendingFocusScore);
-            if (focusHistoryRef.current.length > 60) focusHistoryRef.current.shift();
-            setFocusHistory([...focusHistoryRef.current]);
-            const avg = focusHistoryRef.current.reduce((s, v) => s + v, 0) / focusHistoryRef.current.length;
-            setAvgFocus(Math.round(avg));
-            setPeakFocus(Math.max(...focusHistoryRef.current));
-          }
-        }
-        prevFrameRef.current = new Uint8ClampedArray(data);
-      }
-      rafRef.current = requestAnimationFrame(analyze);
-    };
-    analyze();
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [active, faceReady, detectFace]);
-
-  useEffect(() => () => stopCamera(), [stopCamera]);
+  const {
+    videoRef, canvasRef, active, error, focusScore, motionLevel, brightness,
+    personDetected, faceBox, confidence, videoSize, sessionTime, focusHistory,
+    avgFocus, peakFocus, faceLandmarks, showLandmarks, setShowLandmarks,
+    landmarkCount, faceLoading, faceReady, startCamera, stopCamera, onVideoMetadata,
+  } = useFaceFocus();
 
   const focusColor = focusScore >= 70 ? "oklch(0.72 0.16 145)" : focusScore >= 40 ? "oklch(0.78 0.16 90)" : "oklch(0.65 0.2 25)";
   const focusLabel = focusScore >= 70 ? t("cam.focused") : focusScore >= 40 ? t("cam.distracted") : t("cam.unfocused");
@@ -284,10 +49,7 @@ export function CameraModule() {
               ref={videoRef}
               playsInline
               muted
-              onLoadedMetadata={(e) => {
-                const v = e.currentTarget;
-                setVideoSize({ w: v.videoWidth, h: v.videoHeight });
-              }}
+              onLoadedMetadata={onVideoMetadata}
               className={cn(
                 "w-full h-full object-cover transition-opacity duration-500",
                 active ? "opacity-100" : "opacity-0"
@@ -426,7 +188,7 @@ export function CameraModule() {
                       </div>
                     )}
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass-strong">
-                      <span className="text-xs font-medium tabular-nums">{formatSession(sessionTime)}</span>
+                      <span className="text-xs font-medium tabular-nums">{formatTime(sessionTime)}</span>
                     </div>
                     {/* Face landmarks toggle */}
                     <button
@@ -535,7 +297,7 @@ export function CameraModule() {
             </GlassCard>
             <GlassCard className="p-3.5">
               <div className="flex items-center gap-1.5 mb-1.5 text-primary"><CameraIcon className="w-3.5 h-3.5" /></div>
-              <div className="text-base font-bold tabular-nums">{formatSession(sessionTime)}</div>
+              <div className="text-base font-bold tabular-nums">{formatTime(sessionTime)}</div>
               <div className="text-[11px] text-muted-foreground">{t("cam.sessionTime")}</div>
             </GlassCard>
           </div>
@@ -586,60 +348,6 @@ function FocusGauge({ score, color }: { score: number; color: string }) {
   );
 }
 
-// Face oval landmark indices (MediaPipe Face Mesh)
-const FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109, 10];
-const LEFT_EYE = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246, 33];
-const RIGHT_EYE = [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398, 362];
-const LIPS_OUTER = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146, 61];
-
-function getFaceContourPath(landmarks: { x: number; y: number; z?: number }[]): string {
-  if (landmarks.length === 0) return "";
-  const points = FACE_OVAL.map((idx) => {
-    if (idx >= landmarks.length) return null;
-    const lm = landmarks[idx];
-    return `${lm.x},${lm.y}`;
-  }).filter(Boolean);
-  return `M ${points.join(" L ")} Z`;
-}
-
-function getEyeContourPath(landmarks: { x: number; y: number; z?: number }[], side: "left" | "right"): string {
-  if (landmarks.length === 0) return "";
-  const indices = side === "left" ? LEFT_EYE : RIGHT_EYE;
-  const points = indices.map((idx) => {
-    if (idx >= landmarks.length) return null;
-    const lm = landmarks[idx];
-    return `${lm.x},${lm.y}`;
-  }).filter(Boolean);
-  return `M ${points.join(" L ")} Z`;
-}
-
-function getLipsContourPath(landmarks: { x: number; y: number; z?: number }[]): string {
-  if (landmarks.length === 0) return "";
-  const points = LIPS_OUTER.map((idx) => {
-    if (idx >= landmarks.length) return null;
-    const lm = landmarks[idx];
-    return `${lm.x},${lm.y}`;
-  }).filter(Boolean);
-  return `M ${points.join(" L ")} Z`;
-}
-
-// Eye Aspect Ratio (EAR) calculation - detects eye openness
-// EAR = (|p2-p6| + |p3-p5|) / (2 * |p1-p4|)
-// p1=outer corner, p2=top, p3=top inner, p4=inner corner, p5=bottom inner, p6=bottom
-function calcEAR(
-  landmarks: { x: number; y: number; z?: number }[],
-  p1: number, p2: number, p3: number, p4: number, p5: number, p6: number
-): number {
-  if (landmarks.length <= Math.max(p1, p2, p3, p4, p5, p6)) return 0;
-  const dist = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-    Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
-  const v1 = dist(landmarks[p2], landmarks[p6]);
-  const v2 = dist(landmarks[p3], landmarks[p5]);
-  const h = dist(landmarks[p1], landmarks[p4]);
-  if (h === 0) return 0;
-  return (v1 + v2) / (2 * h);
-}
-
 function FocusChart({ data, color }: { data: number[]; color: string }) {
   const w = 260;
   const h = 80;
@@ -662,10 +370,4 @@ function FocusChart({ data, color }: { data: number[]; color: string }) {
       {points.length > 0 && <circle cx={points[points.length - 1].x} cy={points[points.length - 1].y} r="3" fill={color} />}
     </svg>
   );
-}
-
-function formatSession(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }

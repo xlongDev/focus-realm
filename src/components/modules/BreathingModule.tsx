@@ -16,7 +16,7 @@ import {
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { FloatingOrbs, ConfettiBurst } from "@/components/ui/effects";
-import { musicPlayer, CustomMusicPlayer } from "@/lib/sound";
+import { musicPlayer, CustomMusicPlayer } from "@/lib/music";
 
 interface BreathPattern {
   id: string;

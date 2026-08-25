@@ -37,7 +37,8 @@ export function useThemeEffect() {
 }
 
 // Hook for sound on click
-import { sfx, initAudio } from "@/lib/sound";
+import { sfx } from "@/lib/sfx";
+import { initAudio } from "@/lib/audio-engine";
 export function useSfx() {
   return sfx;
 }

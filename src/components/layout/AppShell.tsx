@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore, type ModuleId, type ThemeName } from "@/lib/store";
+import { usePathname, useRouter } from "next/navigation";
+import { pathFor, moduleFromPath } from "@/lib/routes";
 import { useT, useSfx } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import {
@@ -56,13 +58,14 @@ const LANGS = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const t = useT();
   const sfx = useSfx();
-  const activeModule = useAppStore((s) => s.activeModule);
-  const setActiveModule = useAppStore((s) => s.setActiveModule);
+  const pathname = usePathname();
+  const router = useRouter();
+  const activeId = moduleFromPath(pathname);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const go = (id: ModuleId) => {
     sfx.click();
-    setActiveModule(id);
+    router.push(pathFor(id));
     setMobileNavOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -88,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="flex flex-col gap-1.5 mt-2">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
-            const active = activeModule === item.id;
+            const active = activeId === item.id;
             return (
               <button
                 key={item.id}
@@ -122,12 +125,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onMouseEnter={() => sfx.hover()}
             className={cn(
               "group relative flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-medium transition-all",
-              activeModule === "settings"
+              activeId === "settings"
                 ? "text-primary-foreground"
                 : "text-foreground/70 hover:text-foreground hover:bg-accent/30"
             )}
           >
-            {activeModule === "settings" && (
+            {activeId === "settings" && (
               <motion.div
                 layoutId="nav-active"
                 className="absolute inset-0 rounded-2xl"
@@ -223,7 +226,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
-                const active = activeModule === item.id;
+                const active = activeId === item.id;
                 return (
                   <button
                     key={item.id}
@@ -242,7 +245,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => go("settings")}
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all",
-                  activeModule === "settings" ? "bg-primary text-primary-foreground" : "text-foreground/80 hover:bg-accent/30"
+                  activeId === "settings" ? "bg-primary text-primary-foreground" : "text-foreground/80 hover:bg-accent/30"
                 )}
               >
                 <SettingsIcon className="w-5 h-5" />
@@ -261,7 +264,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="max-w-6xl mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
-              key={activeModule}
+              key={pathname}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
@@ -278,7 +281,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="glass-strong glass-sheen rounded-3xl px-2 py-2 flex items-center justify-around">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
-            const active = activeModule === item.id;
+            const active = activeId === item.id;
             return (
               <button
                 key={item.id}

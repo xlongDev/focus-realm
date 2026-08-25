@@ -11,6 +11,7 @@ import {
   PlayIcon, ResetIcon, TrophyIcon, ClockIcon, TargetIcon, StatsIcon, TrendUpIcon, GridIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { generateSchulteGrid } from "@/lib/schulte";
 import { ConfettiBurst } from "@/components/ui/effects";
 
 const DIFFICULTIES = [
@@ -48,17 +49,8 @@ export function SchulteModule() {
   const startTimeRef = useRef(0);
   const total = gridSize * gridSize;
 
-  const shuffle = useCallback((n: number) => {
-      const arr = Array.from({ length: n * n }, (_, i) => i + 1);
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    }, []);
-
   const startGame = useCallback(() => {
-    const g = shuffle(gridSize);
+    const g = generateSchulteGrid(gridSize);
     setGrid(g);
     setNextNum(1);
     nextNumRef.current = 1;
@@ -82,7 +74,7 @@ export function SchulteModule() {
       setStartTime(Date.now());
       startTimeRef.current = Date.now();
     }, animDuration);
-  }, [gridSize, shuffle, sfx]);
+  }, [gridSize, sfx]);
 
   const stopGame = useCallback(() => {
     setPlaying(false);

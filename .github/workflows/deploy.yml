@@ -35,6 +35,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Lint (oxlint)
+        run: pnpm lint
+
+      - name: Type check (tsc --noEmit)
+        run: pnpm exec tsc --noEmit
+
+      - name: Unit tests (vitest)
+        run: pnpm test
+
       - name: Build static site
         run: pnpm build
         env:
