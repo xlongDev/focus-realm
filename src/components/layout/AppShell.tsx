@@ -141,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Top controls row */}
           <div className="flex items-center gap-2 px-1 pt-2">
-            <ThemePicker />
+            <ThemePicker direction="up" align="left" />
             <LangPicker />
             <SoundToggle />
             <a
@@ -306,7 +306,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ThemePicker() {
+function ThemePicker({
+  direction = "down",
+  align = "right",
+}: {
+  direction?: "up" | "down";
+  align?: "left" | "right";
+}) {
   const t = useT();
   const sfx = useSfx();
   const theme = useAppStore((s) => s.theme);
@@ -322,6 +328,9 @@ function ThemePicker() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const isUp = direction === "up";
+  const isLeft = align === "left";
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -336,11 +345,15 @@ function ThemePicker() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: -8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: -8 }}
+            initial={{ opacity: 0, scale: 0.9, y: isUp ? 8 : -8, x: isLeft ? -8 : 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: isUp ? 8 : -8, x: isLeft ? -8 : 8 }}
             transition={{ duration: 0.18 }}
-            className="absolute right-0 mt-2 w-52 glass-strong glass-sheen rounded-2xl p-2 z-50"
+            className={cn(
+              "absolute w-52 glass-strong glass-sheen rounded-2xl p-2 z-50 shadow-2xl max-h-[min(24rem,calc(100vh-2rem))] overflow-y-auto",
+              isUp ? "bottom-full mb-2" : "mt-2",
+              isLeft ? "left-0" : "right-0"
+            )}
           >
             <div className="text-xs font-semibold text-muted-foreground px-2 py-1.5">{t("settings.theme")}</div>
             {THEMES.map((th) => (
