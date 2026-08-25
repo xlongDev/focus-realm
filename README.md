@@ -1,5 +1,9 @@
 # 专注境 Focus Realm
 
+<p align="center">
+  <a href="README.md">中文</a> · <a href="README.en.md">English</a>
+</p>
+
 > 液态玻璃（Liquid Glass）风格的专注力监控系统 —— 融合番茄工作法、舒尔特方格、正念冥想、呼吸训练与摄像头专注监测的全功能专注力训练 Web 应用。
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
@@ -38,7 +42,7 @@
 - **语言**：TypeScript 7（原生 Go 移植版本）
 - **状态管理**：[Zustand](https://github.com/pmndrs/zustand)
 - **计算机视觉**：[@mediapipe/tasks-vision](https://www.npmjs.com/package/@mediapipe/tasks-vision)（摄像头专注监测，纯客户端推理）
-- **可视化**：Recharts 3、Framer Motion 13
+- **动效**：Framer Motion 13
 - **代码质量**：[oxlint](https://oxc.rs/)（取代 ESLint，零配置极速 lint）
 - **包管理**：pnpm 11
 - **部署**：GitHub Pages（GitHub Actions 自动构建并发布）
@@ -117,17 +121,41 @@ pnpm build
 
 ```
 focus-realm/
-├── .github/workflows/     # GitHub Pages 自动部署工作流
+├── .github/workflows/
+│   └── deploy.yml         # GitHub Pages 自动部署（含 lint / tsc / test 质量门）
 ├── public/                # 静态资源（favicon、logo、robots.txt）
 ├── src/
-│   ├── app/               # App Router 入口（layout.tsx / page.tsx）
+│   ├── app/               # Next.js App Router
+│   │   ├── layout.tsx     # 根布局（服务端组件）：字体、全局样式、深浅主题
+│   │   ├── globals.css    # Tailwind v4 CSS-first 全局样式
+│   │   └── (app)/         # 路由组（共享导航布局，对应 7 个页面）
+│   │       ├── layout.tsx # 客户端布局：主题/音频副作用 + 极光背景 + AppShell
+│   │       ├── page.tsx           # 首页 Home        → /
+│   │       ├── pomodoro/page.tsx  # 番茄钟           → /pomodoro
+│   │       ├── schulte/page.tsx    # 舒尔特方格       → /schulte
+│   │       ├── meditation/page.tsx # 正念冥想         → /meditation
+│   │       ├── breathing/page.tsx  # 呼吸训练         → /breathing
+│   │       ├── camera/page.tsx     # 摄像头专注监测   → /camera（ML 懒加载）
+│   │       └── settings/page.tsx   # 设置             → /settings
 │   ├── components/
-│   │   ├── layout/        # 应用外壳 / 导航
-│   │   ├── modules/       # 七大功能模块
-│   │   └── ui/            # shadcn 风格基础组件
+│   │   ├── layout/        # AppShell 应用外壳 / 导航
+│   │   ├── modules/       # 七大功能模块组件
+│   │   └── ui/            # 实际使用的基础组件
 │   ├── hooks/             # 自定义 Hooks（主题、音频、MediaPipe 检测等）
-│   └── lib/               # 工具函数、Zustand store、i18n
+│   └── lib/               # 工具、Zustand store、i18n、拆分后的音频/摄像头逻辑
+│       ├── routes.ts          # pathFor / moduleFromPath 路由映射
+│       ├── camera-math.ts     # 专注分 / EAR / 轮廓 SVG 路径（纯函数）
+│       ├── use-face-focus.ts  # 摄像头 rAF 分析自定义 hook
+│       ├── audio-engine.ts    # 音频上下文单例与原语
+│       ├── sfx.ts             # 交互音效
+│       ├── ambient-sounds.ts  # 环境音（含调度原语）
+│       ├── music.ts           # 生成式背景音乐
+│       ├── schulte.ts         # 舒尔特方格生成（纯函数）
+│       ├── store.ts           # Zustand 全局状态
+│       ├── i18n.ts            # 多语言（translate）
+│       └── __tests__/         # vitest 单测
 ├── next.config.ts         # 静态导出 + Pages 子路径配置
+├── vitest.config.mjs      # 单元测试配置
 ├── .oxlintrc.json         # oxlint 规则配置
 └── package.json
 ```
